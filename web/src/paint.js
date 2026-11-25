@@ -1,4 +1,6 @@
-class PaintManager {
+import { setCanvasTitle } from './main.js';
+
+export class PaintManager {
   constructor(canvas, ctx) {
     this.canvas = canvas;
     this.ctx = ctx;

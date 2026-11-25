@@ -1,4 +1,5 @@
 #include "EPD_driver.h"
+#include "app_config.h"
 
 bool SSD16xx_ReadBusy(epd_model_t* epd) { return EPD_ReadBusy(); }
 
@@ -106,6 +107,8 @@ void SSD16xx_Sleep(epd_model_t* epd) {
     delay(100);
 }
 
+#if EPD_SSD1619_420_BWR_ENABLED || EPD_SSD1619_420_BW_ENABLED || EPD_SSD1677_750_BWR_ENABLED || \
+    EPD_SSD1677_750_BW_ENABLED
 static const epd_driver_t epd_drv_ssd16xx = {
     .init = SSD16xx_Init,
     .clear = SSD16xx_Clear,
@@ -116,12 +119,21 @@ static const epd_driver_t epd_drv_ssd16xx = {
     .read_temp = SSD16xx_ReadTemp,
     .read_busy = SSD16xx_ReadBusy,
 };
+#endif
 
 // SSD1619 400x300 Black/White/Red
+#if EPD_SSD1619_420_BWR_ENABLED
 const epd_model_t epd_ssd1619_420_bwr = {SSD1619_420_BWR, COLOR_BWR, &epd_drv_ssd16xx, DRV_IC_SSD1619, 400, 300};
+#endif
 // SSD1619 400x300 Black/White
+#if EPD_SSD1619_420_BW_ENABLED
 const epd_model_t epd_ssd1619_420_bw = {SSD1619_420_BW, COLOR_BW, &epd_drv_ssd16xx, DRV_IC_SSD1619, 400, 300};
+#endif
 // SSD1677 880x528 Black/White/Red
+#if EPD_SSD1677_750_BWR_ENABLED
 const epd_model_t epd_ssd1677_750_bwr = {SSD1677_750_HD_BWR, COLOR_BWR, &epd_drv_ssd16xx, DRV_IC_SSD1677, 880, 528};
+#endif
 // SSD1677 880x528 Black/White
+#if EPD_SSD1677_750_BW_ENABLED
 const epd_model_t epd_ssd1677_750_bw = {SSD1677_750_HD_BW, COLOR_BW, &epd_drv_ssd16xx, DRV_IC_SSD1677, 880, 528};
+#endif

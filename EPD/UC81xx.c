@@ -1,4 +1,5 @@
 #include "EPD_driver.h"
+#include "app_config.h"
 
 bool UC81xx_ReadBusy(epd_model_t* epd) { return EPD_ReadBusy() == false; }
 
@@ -275,6 +276,11 @@ void UC81xx_Sleep(epd_model_t* epd) {
 }
 
 // Declare driver and models
+#if EPD_UC8176_420_BW_ENABLED || EPD_UC8176_420_BWR_ENABLED || EPD_UC8159_583_BW_ENABLED || \
+    EPD_UC8159_583_BWR_ENABLED || EPD_UC8159_750_BW_ENABLED || EPD_UC8159_750_BWR_ENABLED || \
+    EPD_UC8179_583_BW_ENABLED || EPD_UC8179_583_BWR_ENABLED || EPD_UC8179_750_BW_ENABLED || \
+    EPD_UC8179_750_BWR_ENABLED || EPD_JD79668_420_BWRY_ENABLED || EPD_JD79665_750_BWRY_ENABLED || \
+    EPD_JD79665_583_BWRY_ENABLED
 static const epd_driver_t epd_drv_uc81xx = {
     .init = UC81xx_Init,
     .clear = UC81xx_Clear,
@@ -285,30 +291,57 @@ static const epd_driver_t epd_drv_uc81xx = {
     .read_temp = UC81xx_ReadTemp,
     .read_busy = UC81xx_ReadBusy,
 };
+#endif
 
 // UC8176 400x300 Black/White
+#if EPD_UC8176_420_BW_ENABLED
 const epd_model_t epd_uc8176_420_bw = {UC8176_420_BW, COLOR_BW, &epd_drv_uc81xx, DRV_IC_UC8176, 400, 300};
+#endif
 // UC8176 400x300 Black/White/Red
+#if EPD_UC8176_420_BWR_ENABLED
 const epd_model_t epd_uc8176_420_bwr = {UC8176_420_BWR, COLOR_BWR, &epd_drv_uc81xx, DRV_IC_UC8176, 400, 300};
+#endif
 // UC8159 600x448 Black/White
+#if EPD_UC8159_583_BW_ENABLED
 const epd_model_t epd_uc8159_583_bw = {UC8159_583_LOW_BW, COLOR_BW, &epd_drv_uc81xx, DRV_IC_UC8159, 600, 448};
+#endif
 // UC8159 600x448 Black/White/Red
+#if EPD_UC8159_583_BWR_ENABLED
 const epd_model_t epd_uc8159_583_bwr = {UC8159_583_LOW_BWR, COLOR_BWR, &epd_drv_uc81xx, DRV_IC_UC8159, 600, 448};
+#endif
 // UC8159 640x384 Black/White
+#if EPD_UC8159_750_BW_ENABLED
 const epd_model_t epd_uc8159_750_bw = {UC8159_750_LOW_BW, COLOR_BW, &epd_drv_uc81xx, DRV_IC_UC8159, 640, 384};
+#endif
 // UC8159 640x384 Black/White/Red
+#if EPD_UC8159_750_BWR_ENABLED
 const epd_model_t epd_uc8159_750_bwr = {UC8159_750_LOW_BWR, COLOR_BWR, &epd_drv_uc81xx, DRV_IC_UC8159, 640, 384};
+#endif
 // UC8179 648x480 Black/White
+#if EPD_UC8179_583_BW_ENABLED
 const epd_model_t epd_uc8179_583_bw = {UC8179_583_BW, COLOR_BW, &epd_drv_uc81xx, DRV_IC_UC8179, 648, 480};
+#endif
 // UC8179 648x480 Black/White/Red
+#if EPD_UC8179_583_BWR_ENABLED
 const epd_model_t epd_uc8179_583_bwr = {UC8179_583_BWR, COLOR_BWR, &epd_drv_uc81xx, DRV_IC_UC8179, 648, 480};
+#endif
 // UC8179 800x480 Black/White
+#if EPD_UC8179_750_BW_ENABLED
 const epd_model_t epd_uc8179_750_bw = {UC8179_750_BW, COLOR_BW, &epd_drv_uc81xx, DRV_IC_UC8179, 800, 480};
+#endif
 // UC8179 800x480 Black/White/Red
+#if EPD_UC8179_750_BWR_ENABLED
 const epd_model_t epd_uc8179_750_bwr = {UC8179_750_BWR, COLOR_BWR, &epd_drv_uc81xx, DRV_IC_UC8179, 800, 480};
+#endif
 // JD79668 400x300 Black/White/Red/Yellow
+#if EPD_JD79668_420_BWRY_ENABLED
 const epd_model_t epd_jd79668_420_bwry = {JD79668_420_BWRY, COLOR_BWRY, &epd_drv_uc81xx, DRV_IC_JD79668, 400, 300};
+#endif
 // JD79665 800x480 Black/White/Red/Yellow
+#if EPD_JD79665_750_BWRY_ENABLED
 const epd_model_t epd_jd79665_750_bwry = {JD79665_750_BWRY, COLOR_BWRY, &epd_drv_uc81xx, DRV_IC_JD79665, 800, 480};
+#endif
 // JD79665 648x480 Black/White/Red/Yellow
+#if EPD_JD79665_583_BWRY_ENABLED
 const epd_model_t epd_jd79665_583_bwry = {JD79665_583_BWRY, COLOR_BWRY, &epd_drv_uc81xx, DRV_IC_JD79665, 648, 480};
+#endif

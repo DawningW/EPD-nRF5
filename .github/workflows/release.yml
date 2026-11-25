@@ -1,0 +1,36 @@
+name: Release
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  codesize:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+      - name: Diff
+        run: |
+          tag=${{ github.event.release.tag_name }}
+          git show "${tag}:codesize.json" > new.json
+          prev=$(git describe --tags --abbrev=0 "${tag}^" 2>/dev/null || true)
+          old=''
+          if [ -n "$prev" ] && git show "${prev}:codesize.json" > old.json 2>/dev/null; then
+            old='--old old.json'
+          fi
+          python3 tools/codesize.py diff new.json $old > table.md
+      - name: Append to release notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag=${{ github.event.release.tag_name }}
+          gh release view "$tag" --json body --jq .body > body.md
+          { cat body.md; echo; echo '## Code Size'; echo; cat table.md; echo; } > notes.md
+          gh release edit "$tag" --notes-file notes.md

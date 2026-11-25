@@ -268,6 +268,29 @@ label {
     border-bottom: 1px dotted #AAA;
 }
 
+.progress-bar {
+    flex: 1;
+    height: 1rem;
+    background-color: #e9ecef;
+    border-radius: .375rem;
+    overflow: hidden;
+}
+
+.progress-bar div {
+    width: 0;
+    height: 100%;
+    background-color: var(--primary-color);
+}
+
+.progress-bar div.failed {
+    background-color: #dc3545;
+}
+
+.status-text {
+    min-width: 3em;
+    text-align: right;
+}
+
 canvas.text-placement-mode {
     border: 2px dashed var(--primary-color) !important;
     cursor: text !important;
@@ -439,6 +462,10 @@ body.dark-mode input[type=file]::file-selector-button:hover {
     border-color: #444;
 }
 
+body.dark-mode .progress-bar {
+    background-color: var(--dark-input-bg);
+}
+
 body.dark-mode .log-container {
     background: var(--dark-log-bg);
     border: 1px solid var(--dark-border);
@@ -487,4 +514,56 @@ body.dark-mode .tool-button.active {
     background-color: var(--primary-color);
     color: white;
     border-color: var(--primary-hover);
+}
+
+.gallery-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px;
+    border-bottom: 1px solid #eee;
+}
+
+.gallery-item:last-child {
+    border-bottom: none;
+}
+
+.gallery-item .info {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+}
+
+.gallery-item .icon {
+    margin-right: 8px;
+}
+
+.gallery-item .size {
+    margin: 0 10px;
+    color: #666;
+    font-size: 0.9em;
+    min-width: 60px;
+    text-align: right;
+}
+
+.gallery-item .actions {
+    display: flex;
+    gap: 5px;
+}
+
+.gallery-item .actions button {
+    margin: 0;
+    padding: 2px 8px;
+    font-size: 12px;
+}
+
+body.dark-mode .gallery-item {
+    border-color: var(--dark-border);
+}
+
+body.dark-mode .gallery-item .size {
+    color: #999;
 }

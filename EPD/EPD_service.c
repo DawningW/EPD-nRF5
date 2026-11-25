@@ -22,6 +22,10 @@
 #include "nrf_log.h"
 #include "nrf_pwr_mgmt.h"
 #include "sdk_macros.h"
+#if FILESYSTEM_ENABLED
+#include "filesystem.h"
+#include "image.h"
+#endif
 
 #if defined(S112)
 #define EPD_CFG_52811 {0x14, 0x13, 0x06, 0x05, 0x04, 0x03, 0x02, 0x02, 0xFF, 0x12, 0x07}
@@ -29,6 +33,134 @@
 #else
 #define EPD_CFG_DEFAULT {0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10, 0x03, 0x09, 0x03}
 // #define EPD_CFG_DEFAULT {0x05, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x01, 0x07}
+#endif
+
+#if FILESYSTEM_ENABLED
+typedef struct {
+    epd_model_t* epd;
+    uint8_t plane;
+    bool first;
+} image_ctx_t;
+
+static File dl_file;
+static bool dl_active = false;
+
+static void on_image_data(const uint8_t* data, uint32_t len, void* user_data) {
+    image_ctx_t* img = (image_ctx_t*)user_data;
+    // plane 0: black, plane 1: color (BWR only); "first" marks the start of a plane
+    img->epd->drv->write_ram(img->epd, img->first, img->plane == 0, (uint8_t*)data, (uint8_t)len);
+    img->first = false;
+}
+
+static bool epd_draw_image(const char* filename, epd_model_t* epd) {
+    char path[LFS_NAME_MAX + 1] = {0};
+    snprintf(path, sizeof(path), IMAGE_PATH "/%s", filename);
+    File file;
+    if (FS_Open(&file, path, FS_O_RDONLY) < 0) {
+        return false;
+    }
+
+    uint8_t bpp = epd->color == COLOR_BWRY ? 2 : 1;
+    uint8_t planes = epd->color == COLOR_BWR ? 2 : 1;
+    uint32_t pixels = epd->width * epd->height;
+
+    epd->drv->clear(epd, false);
+
+    rle_ctx_t ctx;
+    image_ctx_t img = {.epd = epd};
+    uint8_t buf[256];
+    uint32_t off = 0;
+    int read_len = 0;
+
+    for (uint8_t plane = 0; plane < planes; plane++) {
+        rle_init(&ctx, pixels, bpp, on_image_data, &img);
+        img.plane = plane;
+        img.first = true;
+
+        while (1) {
+            if (off >= read_len) {
+                read_len = FS_Read(&file, buf, sizeof(buf));
+                off = 0;
+                if (read_len <= 0) break;
+                app_feed_wdt();
+            }
+            off += rle_decode(&ctx, buf + off, read_len - off);
+            if (ctx.decoded_len >= ctx.expected_len) break;
+        }
+
+        if (ctx.decoded_len < ctx.expected_len) break;
+    }
+
+    FS_Close(&file);
+    return true;
+}
+
+static bool epd_image_update(epd_config_t* config, epd_model_t* epd, bool force) {
+    uint8_t mode = config->gallery_mode;
+    if (mode == GALLERY_MODE_RANDOM) srand(timestamp());
+
+    Directory dir;
+    if (FS_OpenDir(&dir, IMAGE_PATH) != 0) return false;
+
+    char first[LFS_NAME_MAX + 1] = {0};
+    char pick[LFS_NAME_MAX + 1] = {0};
+    uint16_t image_count = 0;
+    uint16_t random_count = 0;
+    bool current_found = false;
+    int ret = 0;
+    FileInfo info;
+
+    while ((ret = FS_ReadDir(&dir, &info)) > 0) {
+        if (info.type != LFS_TYPE_REG) continue;
+        image_count++;
+        if (!first[0]) strcpy(first, info.name);
+
+        if (strcmp(info.name, config->gallery_image) == 0) {
+            current_found = true;
+            continue;
+        }
+
+        if (mode == GALLERY_MODE_RANDOM) {
+            random_count++;
+            if (rand() % random_count == 0) strcpy(pick, info.name);
+        } else if (mode == GALLERY_MODE_SEQ && current_found && !pick[0]) {
+            strcpy(pick, info.name);
+        }
+    }
+    FS_CloseDir(&dir);
+
+    if (ret < 0 || image_count == 0) return false;
+
+    if (image_count == 1) {
+        strcpy(pick, first);
+    } else if (mode == GALLERY_MODE_FIXED) {
+        strcpy(pick, current_found ? config->gallery_image : first);
+    } else if (!pick[0]) {
+        strcpy(pick, first);
+    }
+
+    bool image_changed = strcmp(pick, config->gallery_image) != 0;
+    if (!force && !image_changed) return true;
+
+    if (!epd_draw_image(pick, epd)) return true;
+    if (image_changed) {
+        strcpy(config->gallery_image, pick);
+        epd_config_write(config);
+    }
+    epd->drv->refresh(epd);
+    return true;
+}
+
+void ble_epd_file_chunk_send(ble_epd_t* p_epd, File* file) {
+    static uint8_t buf[BLE_EPD_MAX_DATA_LEN];
+    int read_len = FS_Read(file, buf, p_epd->max_data_len);
+    if (read_len <= 0) {
+        FS_Close(file);
+        dl_active = false;
+        return;
+    }
+    ble_epd_string_send(p_epd, buf, read_len);
+}
 #endif
 
 static uint32_t rle_decompress_from(const uint8_t* src, uint32_t src_len, uint32_t* src_pos, uint8_t* dst,
@@ -61,25 +193,41 @@ static void epd_gui_update(void* p_event_data, uint16_t event_size) {
 
     EPD_GPIO_Init();
     epd_model_t* epd = epd_init((epd_model_id_t)p_epd->config.model_id);
-    gui_data_t data = {
-        .mode = (display_mode_t)p_epd->config.display_mode,
-        .color = epd->color,
-        .width = epd->width,
-        .height = epd->height,
-        .timestamp = event->timestamp,
-        .week_start = p_epd->config.week_start,
-        .temperature = epd->drv->read_temp(epd),
-        .voltage = EPD_ReadVoltage(),
-    };
+    display_mode_t display_mode = (display_mode_t)p_epd->config.display_mode;
+    if (display_mode == MODE_GALLERY) {
+#if FILESYSTEM_ENABLED
+        if (!epd_image_update(&p_epd->config, epd, event->force)) {
+            gui_data_t data = {
+                .mode = display_mode,
+                .color = epd->color,
+                .width = epd->width,
+                .height = epd->height,
+            };
+            DrawGUI(&data, (buffer_callback)epd->drv->write_image, epd);
+            epd->drv->refresh(epd);
+        }
+#endif
+    } else {
+        gui_data_t data = {
+            .mode = display_mode,
+            .color = epd->color,
+            .width = epd->width,
+            .height = epd->height,
+            .timestamp = event->timestamp,
+            .week_start = p_epd->config.week_start,
+            .temperature = epd->drv->read_temp(epd),
+            .voltage = EPD_ReadVoltage(),
+        };
 
-    uint16_t dev_name_len = sizeof(data.ssid);
-    uint32_t err_code = sd_ble_gap_device_name_get((uint8_t*)data.ssid, &dev_name_len);
-    if (err_code == NRF_SUCCESS && dev_name_len > 0) data.ssid[dev_name_len] = '\0';
+        uint16_t dev_name_len = sizeof(data.ssid);
+        uint32_t err_code = sd_ble_gap_device_name_get((uint8_t*)data.ssid, &dev_name_len);
+        if (err_code == NRF_SUCCESS && dev_name_len > 0) data.ssid[dev_name_len] = '\0';
 
-    DrawGUI(&data, (buffer_callback)epd->drv->write_image, epd);
-    epd->drv->refresh(epd);
-    epd->drv->sleep(epd);
-    nrf_delay_ms(200);  // for sleep
+        DrawGUI(&data, (buffer_callback)epd->drv->write_image, epd);
+        epd->drv->refresh(epd);
+        epd->drv->sleep(epd);
+        nrf_delay_ms(200);  // for sleep
+    }
     EPD_GPIO_Uninit();
 
     app_feed_wdt();
@@ -103,8 +251,15 @@ static void on_connect(ble_epd_t* p_epd, ble_evt_t* p_ble_evt) {
 static void on_disconnect(ble_epd_t* p_epd, ble_evt_t* p_ble_evt) {
     UNUSED_PARAMETER(p_ble_evt);
     p_epd->conn_handle = BLE_CONN_HANDLE_INVALID;
-    if (p_epd->epd) {
+#if FILESYSTEM_ENABLED
+    if (dl_active) {
+        FS_Close(&dl_file);
+        dl_active = false;
+    }
+#endif
+    if (p_epd->epd != NULL) {
         p_epd->epd->drv->sleep(p_epd->epd);
+        p_epd->epd = NULL;
         nrf_delay_ms(200);  // for sleep
     }
     EPD_GPIO_Uninit();
@@ -235,9 +390,104 @@ static void epd_service_on_write(ble_epd_t* p_epd, uint8_t* p_data, uint16_t len
             }
         } break;
 
+#if FILESYSTEM_ENABLED
+        case EPD_CMD_SHOW_IMAGE: {
+            if (length < 2) return;
+            epd_update_display_mode(p_epd, MODE_GALLERY);
+            char filename[LFS_NAME_MAX + 1] = {0};
+            memcpy(filename, &p_data[1], MIN(length - 1, LFS_NAME_MAX));
+            if (epd_draw_image(filename, p_epd->epd)) {
+                strcpy(p_epd->config.gallery_image, filename);
+                epd_config_write(&p_epd->config);
+                p_epd->epd->drv->refresh(p_epd->epd);
+            }
+        } break;
+
+        case EPD_CMD_SET_GALLERY_MODE:
+            if (length < 2) return;
+            if (p_data[1] <= GALLERY_MODE_RANDOM && p_data[1] != p_epd->config.gallery_mode) {
+                p_epd->config.gallery_mode = p_data[1];
+                epd_config_write(&p_epd->config);
+            }
+            break;
+
+        case EPD_CMD_FSSTAT: {
+            FSInfo info = {0};
+            FS_Stat(&info);
+            ble_epd_string_send(p_epd, (uint8_t*)&info, sizeof(info));
+        } break;
+
+        case EPD_CMD_DIR: {
+            if (length < 2) return;
+            char filename[LFS_NAME_MAX + 1] = {0};
+            memcpy(filename, &p_data[1], MIN(length - 1, LFS_NAME_MAX));
+            Directory dir;
+            if (FS_OpenDir(&dir, filename) == 0) {
+                FileInfo info;
+                while (FS_ReadDir(&dir, &info) > 0) {
+                    ble_epd_string_send(p_epd, (uint8_t*)&info, sizeof(info));
+                    nrf_delay_ms(5);
+                }
+                FS_CloseDir(&dir);
+            }
+        } break;
+
+        case EPD_CMD_UPLOAD: {
+            if (length < 2) return;
+            static File* p_file = NULL;
+            if (p_data[1] == 0) { // Open
+                if (p_file != NULL) {
+                    FS_Close(p_file);
+                    free(p_file);
+                    p_file = NULL;
+                }
+                char filename[LFS_NAME_MAX + 1] = {0};
+                memcpy(filename, &p_data[2], MIN(length - 2, LFS_NAME_MAX));
+                p_file = malloc(sizeof(File));
+                memset(p_file, 0, sizeof(File));
+                if (FS_Open(p_file, filename, FS_O_CREAT | FS_O_WRONLY | FS_O_TRUNC) < 0) {
+                    free(p_file);
+                    p_file = NULL;
+                }
+            } else if (p_data[1] == 1) { // Write
+                if (p_file != NULL) {
+                    FS_Write(p_file, &p_data[2], length - 2);
+                }
+            } else if (p_data[1] == 2) { // Close
+                if (p_file != NULL) {
+                    FS_Close(p_file);
+                    free(p_file);
+                    p_file = NULL;
+                }
+            }
+        } break;
+
+        case EPD_CMD_DOWNLOAD: {
+            if (length < 2) return;
+            char filename[LFS_NAME_MAX + 1] = {0};
+            memcpy(filename, &p_data[1], MIN(length - 1, LFS_NAME_MAX));
+            if (dl_active) FS_Close(&dl_file);
+            if (FS_Open(&dl_file, filename, FS_O_RDONLY) != 0) return;
+            dl_active = true;
+            ble_epd_file_chunk_send(p_epd, &dl_file);
+        } break;
+
+        case EPD_CMD_DELETE: {
+            if (length < 2) return;
+            char filename[LFS_NAME_MAX + 1] = {0};
+            memcpy(filename, &p_data[1], MIN(length - 1, LFS_NAME_MAX));
+            FS_Remove(filename);
+        } break;
+
+        case EPD_CMD_FORMAT:
+            FS_Format();
+            break;
+#endif
+
         case EPD_CMD_SET_CONFIG:
             if (length < 2) return;
             memcpy(&p_epd->config, &p_data[1], (length - 1 > EPD_CONFIG_SIZE) ? EPD_CONFIG_SIZE : length - 1);
+            if (!FILESYSTEM_ENABLED) p_epd->config.gallery_mode = 0xFF;
             epd_config_write(&p_epd->config);
             break;
 
@@ -316,6 +566,12 @@ void ble_epd_on_ble_evt(ble_epd_t* p_epd, ble_evt_t* p_ble_evt) {
         case BLE_GATTS_EVT_WRITE:
             on_write(p_epd, p_ble_evt);
             break;
+
+#if FILESYSTEM_ENABLED
+        case BLE_GATTS_EVT_HVN_TX_COMPLETE:
+            if (dl_active) ble_epd_file_chunk_send(p_epd, &dl_file);
+            break;
+#endif
 
         default:
             // No implementation needed.
@@ -401,6 +657,12 @@ uint32_t ble_epd_init(ble_epd_t* p_epd) {
         epd_config_write(&p_epd->config);
     }
 
+    if (!FILESYSTEM_ENABLED) {
+        p_epd->config.gallery_mode = 0xFF;
+    } else if (p_epd->config.gallery_mode == 0xFF) {
+        p_epd->config.gallery_mode = GALLERY_MODE_SEQ;
+    }
+
     // load config
     EPD_GPIO_Load(&p_epd->config);
 
@@ -429,10 +691,13 @@ uint32_t ble_epd_string_send(ble_epd_t* p_epd, uint8_t* p_string, uint16_t lengt
 }
 
 void ble_epd_on_timer(ble_epd_t* p_epd, uint32_t timestamp, bool force_update) {
-    // Update calendar on 00:00:00, clock on every minute
+    // Update calendar/gallery on 00:00:00, clock on every minute
     if (force_update || (p_epd->config.display_mode == MODE_CALENDAR && timestamp % 86400 == 0) ||
+#if FILESYSTEM_ENABLED
+        (p_epd->config.display_mode == MODE_GALLERY && timestamp % 86400 == 0) ||
+#endif
         (p_epd->config.display_mode == MODE_CLOCK && timestamp % 60 == 0)) {
-        epd_gui_update_event_t event = {p_epd, timestamp};
+        epd_gui_update_event_t event = {p_epd, timestamp, force_update};
         app_sched_event_put(&event, sizeof(epd_gui_update_event_t), epd_gui_update);
     }
 }

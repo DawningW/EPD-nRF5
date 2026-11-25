@@ -74,6 +74,18 @@ enum EPD_CMDS {
 
     EPD_CMD_WRITE_IMAGE = 0x30, /** < write image data to EPD ram */
 
+#if FILESYSTEM_ENABLED
+    EPD_CMD_SHOW_IMAGE = 0x40,       /**< show image in filesystem on EPD */
+    EPD_CMD_SET_GALLERY_MODE = 0x41, /** < set gallery refresh mode, see gallery_mode_t */
+
+    EPD_CMD_FSSTAT = 0x80,     /**< get filesystem stat */
+    EPD_CMD_DIR = 0x81,        /**< list files in filesystem */
+    EPD_CMD_UPLOAD = 0x82,     /**< upload file to filesystem */
+    EPD_CMD_DOWNLOAD = 0x83,   /**< download file from filesystem */
+    EPD_CMD_DELETE = 0x84,     /**< delete file from filesystem */
+    EPD_CMD_FORMAT = 0x85,     /**< format filesystem */
+#endif
+
     EPD_CMD_SET_CONFIG = 0x90, /**< set full EPD config */
     EPD_CMD_SYS_RESET = 0x91,  /**< MCU reset */
     EPD_CMD_SYS_SLEEP = 0x92,  /**< MCU enter sleep mode */
@@ -102,6 +114,7 @@ typedef struct {
 typedef struct {
     ble_epd_t* p_epd;
     uint32_t timestamp;
+    bool force;
 } epd_gui_update_event_t;
 
 #define EPD_GUI_SCHD_EVENT_DATA_SIZE sizeof(epd_gui_update_event_t)

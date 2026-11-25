@@ -1,11 +1,20 @@
-let bleDevice, gattServer;
+import './main.css';
+import { adjustContrast, ditherImage, decodeProcessedData, processImageData } from './dithering.js';
+import { PaintManager } from './paint.js';
+import { CropManager } from './crop.js';
+import { rleCompressMTU } from './rle.js';
+import { refreshGallery, uploadImage, uploadRle, formatStorage, handleFileMessage } from './gallery.js';
+import { Dfu, enterDfuMode } from './dfu.js';
+
+let bleDevice, gattServer, inBootloader;
 let epdService, epdCharacteristic;
 let startTime, msgIndex, appVersion;
 let canvas, ctx, textDecoder;
 let paintManager, cropManager;
 let rleSupport;
+let gallerySupported = false;
 
-const EpdCmd = {
+export const EpdCmd = {
   SET_PINS: 0x00,
   INIT: 0x01,
   CLEAR: 0x02,
@@ -17,6 +26,16 @@ const EpdCmd = {
   SET_TIME: 0x20,
 
   WRITE_IMG: 0x30, // v1.6
+
+  SHOW_IMAGE: 0x40,
+  SET_GALLERY_MODE: 0x41,
+
+  FSSTAT: 0x80,
+  DIR: 0x81,
+  UPLOAD: 0x82,
+  DOWNLOAD: 0x83,
+  DELETE: 0x84,
+  FORMAT: 0x85,
 
   SET_CONFIG: 0x90,
   SYS_RESET: 0x91,
@@ -75,34 +94,40 @@ function resetVariables() {
   gattServer = null;
   epdService = null;
   epdCharacteristic = null;
+  inBootloader = false;
   msgIndex = 0;
   rleSupport = false;
   document.getElementById("log").value = '';
 }
 
-async function write(cmd, data, withResponse = true) {
-  if (!epdCharacteristic) {
-    addLog("服务不可用，请检查蓝牙连接");
-    return false;
-  }
-  let payload = [cmd];
-  if (data) {
-    if (typeof data == 'string') data = hex2bytes(data);
-    if (data instanceof Uint8Array) data = Array.from(data);
-    payload.push(...data)
-  }
-  addLog(bytes2hex(payload), '⇑');
-  try {
-    if (withResponse)
-      await epdCharacteristic.writeValueWithResponse(Uint8Array.from(payload));
-    else
-      await epdCharacteristic.writeValueWithoutResponse(Uint8Array.from(payload));
-  } catch (e) {
-    console.error(e);
-    if (e.message) addLog("write: " + e.message);
-    return false;
-  }
-  return true;
+let writeQueue = Promise.resolve();
+
+export function write(cmd, data, withResponse = true) {
+  writeQueue = writeQueue.then(async () => {
+    if (!epdCharacteristic) {
+      addLog("服务不可用，请检查蓝牙连接");
+      return false;
+    }
+    let payload = [cmd];
+    if (data) {
+      if (typeof data == 'string') data = hex2bytes(data);
+      if (data instanceof Uint8Array) data = Array.from(data);
+      payload.push(...data)
+    }
+    addLog(bytes2hex(payload), '⇑');
+    try {
+      if (withResponse)
+        await epdCharacteristic.writeValueWithResponse(Uint8Array.from(payload));
+      else
+        await epdCharacteristic.writeValueWithoutResponse(Uint8Array.from(payload));
+    } catch (e) {
+      console.error(e);
+      if (e.message) addLog("write: " + e.message);
+      return false;
+    }
+    return true;
+  });
+  return writeQueue;
 }
 
 async function writeImage(data, step = 'bw') {
@@ -328,6 +353,120 @@ function downloadDataArray() {
   URL.revokeObjectURL(link.href);
 }
 
+async function setGalleryMode() {
+  const mode = parseInt(document.getElementById('gallerymode').value);
+  if (await write(EpdCmd.SET_GALLERY_MODE, [mode])) {
+    addLog(`相册刷新模式已设置: ${document.getElementById('gallerymode').selectedOptions[0].text}`);
+  }
+}
+
+async function saveToGallery() {
+  if (cropManager.isCropMode()) {
+    alert("请先完成图片裁剪！");
+    return;
+  }
+
+  const ditherMode = document.getElementById('ditherMode').value;
+  if (ditherMode === 'sixColor') {
+    addLog("当前固件不支持此颜色模式。");
+    return;
+  }
+
+  let name = prompt("输入相册文件名：", "img_" + Date.now());
+  if (!name) return;
+  if (!name.endsWith('.rle')) name += '.rle';
+
+  updateButtonStatus(true);
+
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const processedData = processImageData(imageData, ditherMode);
+  const totalPixels = canvas.width * canvas.height;
+
+  await uploadImage(name, processedData, ditherMode, totalPixels);
+  addLog(`已存入相册: ${name}`);
+  updateButtonStatus();
+}
+
+function requestDfuDevice() {
+  return navigator.bluetooth.requestDevice({
+    filters: [{ services: ['0000fe59-0000-1000-8000-00805f9b34fb'] }]
+  });
+}
+
+async function selectDfu() {
+  try {
+    const device = await requestDfuDevice();
+    device.addEventListener('gattserverdisconnected', disconnect);
+    gattServer = await device.gatt.connect();
+    bleDevice = device;
+    inBootloader = true;
+    addLog('已连接 DFU 设备: ' + device.name);
+    updateButtonStatus();
+  } catch (e) {
+    console.error(e);
+    if (e.message) addLog('selectDfu: ' + e.message);
+  }
+}
+
+async function selectBootloader() {
+  addLog('设备已进入固件升级模式，请在弹出的窗口中选择名为 DfuTarg 的设备');
+  const device = await requestDfuDevice();
+  addLog('已选择: ' + device.name);
+  await device.gatt.connect();
+  return device;
+}
+
+async function updateFirmware() {
+  const file = document.getElementById('firmwareFile').files[0];
+  if (!file) {
+    addLog('请先选择固件包');
+    return;
+  }
+  if (!inBootloader && !confirm('确定要升级固件吗？\n设备会重启进入固件升级模式，并再次弹出设备选择框，请选择名为 DfuTarg 的设备。\n升级过程中请不要断开连接或关闭页面！')) return;
+  const bar = document.getElementById('firmwareprogress').firstElementChild;
+  const status = document.getElementById('firmwarestatus');
+  updateButtonStatus(true);
+  bar.classList.remove('failed');
+  bar.style.width = 0;
+  status.innerText = '0%';
+  try {
+    let device = bleDevice;
+    if (!inBootloader) {
+      await enterDfuMode(device);
+      device = await selectBootloader();
+    }
+    const dfu = new Dfu(device, addLog);
+    await dfu.uploadFirmware(file, (percent) => {
+      bar.style.width = percent + '%';
+      status.innerText = percent + '%';
+    });
+    bar.style.width = '100%';
+    status.innerText = '成功';
+    addLog('固件升级完成！');
+  } catch (e) {
+    console.error(e);
+    addLog('固件升级失败: ' + e.message);
+    addLog('若设备无响应，请重新上电后再试。');
+    bar.classList.add('failed');
+    bar.style.width = '100%';
+    status.innerText = '失败';
+  }
+  updateButtonStatus();
+}
+
+function updateGalleryUI() {
+  const connected = gattServer != null && gattServer.connected;
+  const show = connected && gallerySupported;
+  document.getElementById('gallerymodebutton').style.display = show ? '' : 'none';
+  document.getElementById('gallerypanel').style.display = show ? '' : 'none';
+  document.getElementById('savegallerybutton').style.display = show ? '' : 'none';
+}
+
+function setGallerySupported(supported) {
+  gallerySupported = supported;
+  updateGalleryUI();
+}
+
 function updateButtonStatus(forceDisabled = false) {
   const connected = gattServer != null && gattServer.connected;
   const status = forceDisabled ? 'disabled' : (connected ? null : 'disabled');
@@ -335,9 +474,14 @@ function updateButtonStatus(forceDisabled = false) {
   document.getElementById("sendcmdbutton").disabled = status;
   document.getElementById("calendarmodebutton").disabled = status;
   document.getElementById("clockmodebutton").disabled = status;
+  document.getElementById("gallerymodebutton").disabled = status;
   document.getElementById("clearscreenbutton").disabled = status;
   document.getElementById("sendimgbutton").disabled = status;
+  document.getElementById("savegallerybutton").disabled = status;
+  document.getElementById("updatefirmwarebutton").disabled = status;
   document.getElementById("setDriverbutton").disabled = status;
+  document.getElementById("gallerymode").disabled = status;
+  updateGalleryUI();
 }
 
 function disconnect() {
@@ -357,7 +501,7 @@ async function preConnect() {
     resetVariables();
     try {
       bleDevice = await navigator.bluetooth.requestDevice({
-        optionalServices: ['62750001-d828-918d-fb46-b6c11c675aec'],
+        optionalServices: ['62750001-d828-918d-fb46-b6c11c675aec', '0000fe59-0000-1000-8000-00805f9b34fb'],
         acceptAllDevices: true
       });
     } catch (e) {
@@ -383,8 +527,20 @@ async function reConnect() {
   setTimeout(async function () { await connect(); }, 300);
 }
 
+const notifyHandlers = [];
+
+function onNotify(handler) {
+  notifyHandlers.push(handler);
+}
+
 function handleNotify(value, idx) {
   const data = new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
+  for (const handler of notifyHandlers) {
+    if (handler(data, idx) === true) return;
+  }
+}
+
+function handleDeviceMessage(data, idx) {
   if (idx == 0) {
     addLog(`收到配置：${bytes2hex(data)}`);
     const epdpins = document.getElementById("epdpins");
@@ -393,6 +549,13 @@ function handleNotify(value, idx) {
     if (data.length > 10) epdpins.value += bytes2hex(data.slice(10, 11));
     epddriver.value = bytes2hex(data.slice(7, 8));
     updateDitcherOptions();
+
+    const supported = data.length > 13 && data[13] !== 0xFF;
+    setGallerySupported(supported);
+    if (supported) {
+      document.getElementById('gallerymode').value = data[13];
+      refreshGallery();
+    }
   } else {
     if (textDecoder == null) textDecoder = new TextDecoder();
     const msg = textDecoder.decode(data);
@@ -411,24 +574,32 @@ function handleNotify(value, idx) {
       addLog(`本地时间: ${new Date().toLocaleString()}`);
     }
   }
+  return true;
 }
 
 async function connect() {
   if (bleDevice == null || epdCharacteristic != null) return;
 
-  try {
-    addLog("正在连接: " + bleDevice.name);
-    gattServer = await bleDevice.gatt.connect();
-    addLog('  找到 GATT Server');
-    epdService = await gattServer.getPrimaryService('62750001-d828-918d-fb46-b6c11c675aec');
-    addLog('  找到 EPD Service');
-    epdCharacteristic = await epdService.getCharacteristic('62750002-d828-918d-fb46-b6c11c675aec');
-    addLog('  找到 Characteristic');
-  } catch (e) {
-    console.error(e);
-    if (e.message) addLog("connect: " + e.message);
-    disconnect();
-    return;
+  for (let count = 1; count <= 3; count++) {
+    try {
+      addLog("正在连接: " + bleDevice.name);
+      gattServer = await bleDevice.gatt.connect();
+      addLog('  找到 GATT Server');
+      epdService = await gattServer.getPrimaryService('62750001-d828-918d-fb46-b6c11c675aec');
+      addLog('  找到 EPD Service');
+      epdCharacteristic = await epdService.getCharacteristic('62750002-d828-918d-fb46-b6c11c675aec');
+      addLog('  找到 Characteristic');
+      break;
+    } catch (e) {
+      console.error(e);
+      if (e.message) addLog("connect: " + e.message);
+      if (count == 3) {
+        disconnect();
+        return;
+      }
+      addLog('  重试 ' + count + '/2');
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
   }
 
   try {
@@ -470,7 +641,7 @@ function setStatus(statusText) {
   document.getElementById("status").innerHTML = statusText;
 }
 
-function addLog(logTXT, action = '') {
+export function addLog(logTXT, action = '') {
   const log = document.getElementById("log");
   const now = new Date();
   const time = String(now.getHours()).padStart(2, '0') + ":" +
@@ -504,12 +675,12 @@ function clearLog() {
   document.getElementById("log").innerHTML = '';
 }
 
-function fillCanvas(style) {
+export function fillCanvas(style) {
   ctx.fillStyle = style;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 }
 
-function setCanvasTitle(title) {
+export function setCanvasTitle(title) {
   const canvasTitle = document.querySelector('.canvas-title');
   if (canvasTitle) {
     canvasTitle.innerText = title;
@@ -639,6 +810,42 @@ function initEventHandlers() {
     document.getElementById("ditherContrastValue").innerText = parseFloat(e.target.value).toFixed(1);
     applyDither();
   });
+
+  document.getElementById('connectbutton').addEventListener('click', preConnect);
+  document.getElementById('reconnectbutton').addEventListener('click', reConnect);
+  document.getElementById('clearlogbutton').addEventListener('click', clearLog);
+  document.getElementById('epddriver').addEventListener('change', updateDitcherOptions);
+  document.getElementById('setDriverbutton').addEventListener('click', setDriver);
+
+  document.getElementById('calendarmodebutton').addEventListener('click', () => syncTime(1));
+  document.getElementById('clockmodebutton').addEventListener('click', () => syncTime(2));
+  document.getElementById('gallerymodebutton').addEventListener('click', () => syncTime(3));
+  document.getElementById('clearscreenbutton').addEventListener('click', clearScreen);
+  document.getElementById('sendcmdbutton').addEventListener('click', sendcmd);
+
+  document.getElementById('imageFile').addEventListener('change', updateImage);
+  document.getElementById('canvasSize').addEventListener('change', updateCanvasSize);
+  document.getElementById('ditherMode').addEventListener('change', applyDither);
+  document.getElementById('ditherAlg').addEventListener('change', applyDither);
+  document.getElementById('rotatecanvasbutton').addEventListener('click', rotateCanvas);
+  document.getElementById('clearcanvasbutton').addEventListener('click', clearCanvas);
+  document.getElementById('downloadarraybutton').addEventListener('click', downloadDataArray);
+  document.getElementById('sendimgbutton').addEventListener('click', sendimg);
+  document.getElementById('finishcropbutton').addEventListener('click', applyDither);
+
+  document.getElementById('gallerymode').addEventListener('change', setGalleryMode);
+  document.getElementById('savegallerybutton').addEventListener('click', saveToGallery);
+  document.getElementById('uploadimagebutton').addEventListener('click', uploadRle);
+  document.getElementById('refreshgallerybutton').addEventListener('click', refreshGallery);
+  document.getElementById('loadfilesbutton').addEventListener('click', refreshGallery);
+  document.getElementById('formatstoragebutton').addEventListener('click', formatStorage);
+
+  document.getElementById('updatefirmwarebutton').addEventListener('click', updateFirmware);
+  document.getElementById('selectdfubutton').addEventListener('click', selectDfu);
+
+  document.getElementById('qq-link').addEventListener('click', (e) => {
+    if (!confirm('本群是此开源固件作者的技术交流群\n如果你购买了成品，请找卖家提供售后！')) e.preventDefault();
+  });
 }
 
 function checkDebugMode() {
@@ -658,7 +865,7 @@ function checkDebugMode() {
   }
 }
 
-document.body.onload = () => {
+function init() {
   textDecoder = null;
   canvas = document.getElementById('canvas');
   ctx = canvas.getContext("2d");
@@ -669,9 +876,18 @@ document.body.onload = () => {
   paintManager = new PaintManager(canvas, ctx);
   cropManager = new CropManager(canvas, ctx, paintManager);
 
+  onNotify(handleFileMessage);
+  onNotify(handleDeviceMessage);
+
   paintManager.initPaintTools();
   cropManager.initCropTools();
   initEventHandlers();
   updateButtonStatus();
   checkDebugMode();
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init);
+} else {
+  init();
 }

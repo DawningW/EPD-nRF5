@@ -1,0 +1,27 @@
+{
+  "name": "epd-nrf5-web",
+  "version": "1.0.0",
+  "private": true,
+  "description": "EPD-nRF5 Web Bluetooth 上位机",
+  "scripts": {
+    "dev": "cross-env NODE_ENV=development BUILD_MODE=web rspack serve",
+    "build:web": "cross-env NODE_ENV=production BUILD_MODE=web rspack build",
+    "build:single": "cross-env NODE_ENV=production BUILD_MODE=single rspack build",
+    "build": "npm run build:web && npm run build:single",
+    "analyze": "cross-env NODE_ENV=production BUILD_MODE=web ANALYZE=1 rspack build"
+  },
+  "devDependencies": {
+    "@rsdoctor/rspack-plugin": "^1.6.5",
+    "@rspack/cli": "2.2.9",
+    "@rspack/core": "2.2.9",
+    "@rspack/dev-server": "^2.2.2",
+    "cross-env": "^10.0.0",
+    "css-loader": "^7.1.2",
+    "html-minifier-terser": "^7.2.0",
+    "html-rspack-plugin": "^6.1.11"
+  },
+  "dependencies": {
+    "crc-32": "^1.2.2",
+    "fflate": "^0.8.3"
+  }
+}

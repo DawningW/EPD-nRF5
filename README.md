@@ -8,7 +8,7 @@ Supported MCUs: `nrf51822` / `nrf51802` / `nrf52811` / `nrf52810`. For e-paper d
 
 ## Web Interface
 
-This project includes a web-based interface implemented using Web Bluetooth API. You can use it on your phone or computer by visiting the URL below, or by directly double-clicking `html/index.html` locally.
+This project includes a web-based interface implemented using Web Bluetooth API. You can use it on your phone or computer by visiting the URL below, or by directly double-clicking `web/dist/epd.html` locally.
 
 - URL: https://tsl0922.github.io/EPD-nRF5
 - Demo Video: https://www.bilibili.com/video/BV1KWAVe1EKs
@@ -18,6 +18,15 @@ This project includes a web-based interface implemented using Web Bluetooth API.
 
 The web interface supports multiple image dithering algorithms and allows you to doodle on images and add text. In addition to displaying images as a digital photo frame, it can also switch to calendar mode to display monthly calendars, Chinese lunar calendar solar terms, holidays, and work schedule adjustments.
 
+Use following commands to develop or build the web interface:
+
+```bash
+cd web
+npm install
+npm run dev           # dev server with HMR at http://localhost:8080
+npm run build         # build multi-file site and single-file site into web/dist/
+```
+
 ## Supported Devices
 
 [View Documentation](docs/devices.md).
@@ -25,6 +34,10 @@ The web interface supports multiple image dithering algorithms and allows you to
 ## Development
 
 [View Documentation](docs/develop.md).
+
+## RLE Image Format
+
+[View Documentation](docs/rle.md).
 
 ## Acknowledgments
 

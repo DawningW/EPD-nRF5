@@ -1284,7 +1284,11 @@
 // <i> firmware upgrade. The size must be a multiple of the flash page size.
 
 #ifndef NRF_DFU_APP_DATA_AREA_SIZE
+#if FILESYSTEM_ENABLED
+#define NRF_DFU_APP_DATA_AREA_SIZE 0
+#else
 #define NRF_DFU_APP_DATA_AREA_SIZE 8192
+#endif
 #endif
 
 // <q> NRF_DFU_IN_APP  - Specifies that this code is in the app, not the bootloader, so some settings are off-limits.

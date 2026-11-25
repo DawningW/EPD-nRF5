@@ -33,6 +33,9 @@
 #include "softdevice_handler.h"
 #endif
 #include "EPD_service.h"
+#if FILESYSTEM_ENABLED
+#include "filesystem.h"
+#endif
 #include "app_error.h"
 #include "app_scheduler.h"
 #include "app_timer.h"
@@ -259,6 +262,9 @@ static void application_timers_start(void) {
  */
 void sleep_mode_enter(void) {
     NRF_LOG_DEBUG("Entering deep sleep mode\n");
+#if FILESYSTEM_ENABLED
+    FS_Deinit();
+#endif
     NRF_LOG_FINAL_FLUSH();
     nrf_delay_ms(100);
 
@@ -269,6 +275,11 @@ void sleep_mode_enter(void) {
 /**@brief Function for initializing services that will be used by the application.
  */
 static void services_init(void) {
+#if FILESYSTEM_ENABLED
+    // Initialize File System.
+    FS_Init(true);
+#endif
+
     // Initialize EPD Service.
     memset(&m_epd, 0, sizeof(ble_epd_t));
     APP_ERROR_CHECK(ble_epd_init(&m_epd));
@@ -373,6 +384,7 @@ static void advertising_start(void) {
 #endif
 }
 
+#if GPIO_WAKEUP_ENABLED
 void gpiote_evt_handler(nrf_drv_gpiote_pin_t pin, nrf_gpiote_polarity_t action) {
     NRF_LOG_DEBUG("pin: %d, event: %d\n", pin, action);
 
@@ -394,6 +406,7 @@ static void setup_wakeup_pin(nrf_drv_gpiote_pin_t pin) {
     APP_ERROR_CHECK(nrf_drv_gpiote_in_init(pin, &config, gpiote_evt_handler));
     nrf_drv_gpiote_in_event_enable(pin, true);
 }
+#endif
 
 /**@brief Function for handling advertising events.
  *
@@ -407,14 +420,18 @@ static void on_adv_evt(ble_adv_evt_t ble_adv_evt) {
             break;
         case BLE_ADV_EVT_IDLE:
             NRF_LOG_INFO("advertising timeout\n");
+#if GPIO_WAKEUP_ENABLED
             if (m_epd.config.wakeup_pin != 0xFF) {
                 if (m_epd.config.display_mode == MODE_PICTURE)
                     sleep_mode_enter();
                 else
                     setup_wakeup_pin(m_epd.config.wakeup_pin);
             } else {
+#endif
                 advertising_start();
+#if GPIO_WAKEUP_ENABLED
             }
+#endif
             break;
         default:
             break;

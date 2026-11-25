@@ -338,7 +338,7 @@
             <v6Rtti>0</v6Rtti>
             <VariousControls>
               <MiscControls>--locale=english</MiscControls>
-              <Define>BLE_STACK_SUPPORT_REQD NRF51822 NRF_SD_BLE_API_VERSION=2 S130 NRF51 SOFTDEVICE_PRESENT NRF_DFU_SETTINGS_VERSION=1 SWI_DISABLE0 __HEAP_SIZE=4000 __STACK_SIZE=1200</Define>
+              <Define>BLE_STACK_SUPPORT_REQD NRF51822 NRF_SD_BLE_API_VERSION=2 S130 NRF51 SOFTDEVICE_PRESENT NRF_DFU_SETTINGS_VERSION=1 SWI_DISABLE0 USE_APP_CONFIG</Define>
               <Undefine></Undefine>
               <IncludePath>..\;..\EPD;..\GUI;..\SDK\12.3.0_d7731ad;..\SDK\12.3.0_d7731ad\components\toolchain;..\SDK\12.3.0_d7731ad\components\toolchain\cmsis\include;..\SDK\12.3.0_d7731ad\components\drivers_nrf\clock;..\SDK\12.3.0_d7731ad\components\drivers_nrf\common;..\SDK\12.3.0_d7731ad\components\drivers_nrf\delay;..\SDK\12.3.0_d7731ad\components\drivers_nrf\gpiote;..\SDK\12.3.0_d7731ad\components\drivers_nrf\hal;..\SDK\12.3.0_d7731ad\components\drivers_nrf\spi_master;..\SDK\12.3.0_d7731ad\components\drivers_nrf\twi_master;..\SDK\12.3.0_d7731ad\components\drivers_nrf\wdt;..\SDK\12.3.0_d7731ad\external\segger_rtt;..\SDK\12.3.0_d7731ad\components\libraries\bootloader\dfu;..\SDK\12.3.0_d7731ad\components\libraries\crc32;..\SDK\12.3.0_d7731ad\components\libraries\fds;..\SDK\12.3.0_d7731ad\components\libraries\fstorage;..\SDK\12.3.0_d7731ad\components\libraries\experimental_section_vars;..\SDK\12.3.0_d7731ad\components\libraries\log;..\SDK\12.3.0_d7731ad\components\libraries\log\src;..\SDK\12.3.0_d7731ad\components\libraries\pwr_mgmt;..\SDK\12.3.0_d7731ad\components\libraries\scheduler;..\SDK\12.3.0_d7731ad\components\libraries\trace;..\SDK\12.3.0_d7731ad\components\libraries\timer;..\SDK\12.3.0_d7731ad\components\libraries\util;..\SDK\12.3.0_d7731ad\components\ble\common;..\SDK\12.3.0_d7731ad\components\ble\ble_advertising;..\SDK\12.3.0_d7731ad\components\ble\ble_services\ble_dfu;..\SDK\12.3.0_d7731ad\components\softdevice\common\softdevice_handler;..\SDK\12.3.0_d7731ad\components\softdevice\s130\headers;..\SDK\12.3.0_d7731ad\components\softdevice\s130\headers\nrf51</IncludePath>
             </VariousControls>
@@ -355,10 +355,10 @@
             <useXO>0</useXO>
             <ClangAsOpt>1</ClangAsOpt>
             <VariousControls>
-              <MiscControls></MiscControls>
-              <Define>BLE_STACK_SUPPORT_REQD NRF51822 NRF_SD_BLE_API_VERSION=2 S130 NRF51 SOFTDEVICE_PRESENT NRF_DFU_SETTINGS_VERSION=1 SWI_DISABLE0 __HEAP_SIZE=4000 __STACK_SIZE=1200</Define>
+              <MiscControls>--cpreproc --cpreproc_opts=-DBLE_STACK_SUPPORT_REQD,-DNRF51822,-DNRF_SD_BLE_API_VERSION=2,-DS130,-DNRF51,-DSOFTDEVICE_PRESENT,-DNRF_DFU_SETTINGS_VERSION=1,-DSWI_DISABLE0,-D__STARTUP_CONFIG=__STARTUP_CONFIG</MiscControls>
+              <Define>BLE_STACK_SUPPORT_REQD NRF51822 NRF_SD_BLE_API_VERSION=2 S130 NRF51 SOFTDEVICE_PRESENT NRF_DFU_SETTINGS_VERSION=1 SWI_DISABLE0 __STARTUP_CONFIG</Define>
               <Undefine></Undefine>
-              <IncludePath>..\config;..\EPD;..\GUI;..\SDK\12.3.0_d7731ad;..\SDK\12.3.0_d7731ad\components\toolchain;..\SDK\12.3.0_d7731ad\components\toolchain\cmsis\include;..\SDK\12.3.0_d7731ad\components\drivers_nrf\clock;..\SDK\12.3.0_d7731ad\components\drivers_nrf\common;..\SDK\12.3.0_d7731ad\components\drivers_nrf\delay;..\SDK\12.3.0_d7731ad\components\drivers_nrf\gpiote;..\SDK\12.3.0_d7731ad\components\drivers_nrf\hal;..\SDK\12.3.0_d7731ad\components\drivers_nrf\spi_master;..\SDK\12.3.0_d7731ad\components\drivers_nrf\twi_master;..\SDK\12.3.0_d7731ad\external\segger_rtt;..\SDK\12.3.0_d7731ad\components\libraries\fds;..\SDK\12.3.0_d7731ad\components\libraries\fstorage;..\SDK\12.3.0_d7731ad\components\libraries\experimental_section_vars;..\SDK\12.3.0_d7731ad\components\libraries\log;..\SDK\12.3.0_d7731ad\components\libraries\log\src;..\SDK\12.3.0_d7731ad\components\libraries\pwr_mgmt;..\SDK\12.3.0_d7731ad\components\libraries\scheduler;..\SDK\12.3.0_d7731ad\components\libraries\trace;..\SDK\12.3.0_d7731ad\components\libraries\timer;..\SDK\12.3.0_d7731ad\components\libraries\util;..\SDK\12.3.0_d7731ad\components\ble\common;..\SDK\12.3.0_d7731ad\components\ble\ble_advertising;..\SDK\12.3.0_d7731ad\components\softdevice\common\softdevice_handler;..\SDK\12.3.0_d7731ad\components\softdevice\s130\headers;..\SDK\12.3.0_d7731ad\components\softdevice\s130\headers\nrf51</IncludePath>
+              <IncludePath>..\;..\config;..\EPD;..\GUI;..\SDK\12.3.0_d7731ad;..\SDK\12.3.0_d7731ad\components\toolchain;..\SDK\12.3.0_d7731ad\components\toolchain\cmsis\include;..\SDK\12.3.0_d7731ad\components\drivers_nrf\clock;..\SDK\12.3.0_d7731ad\components\drivers_nrf\common;..\SDK\12.3.0_d7731ad\components\drivers_nrf\delay;..\SDK\12.3.0_d7731ad\components\drivers_nrf\gpiote;..\SDK\12.3.0_d7731ad\components\drivers_nrf\hal;..\SDK\12.3.0_d7731ad\components\drivers_nrf\spi_master;..\SDK\12.3.0_d7731ad\components\drivers_nrf\twi_master;..\SDK\12.3.0_d7731ad\external\segger_rtt;..\SDK\12.3.0_d7731ad\components\libraries\fds;..\SDK\12.3.0_d7731ad\components\libraries\fstorage;..\SDK\12.3.0_d7731ad\components\libraries\experimental_section_vars;..\SDK\12.3.0_d7731ad\components\libraries\log;..\SDK\12.3.0_d7731ad\components\libraries\log\src;..\SDK\12.3.0_d7731ad\components\libraries\pwr_mgmt;..\SDK\12.3.0_d7731ad\components\libraries\scheduler;..\SDK\12.3.0_d7731ad\components\libraries\trace;..\SDK\12.3.0_d7731ad\components\libraries\timer;..\SDK\12.3.0_d7731ad\components\libraries\util;..\SDK\12.3.0_d7731ad\components\ble\common;..\SDK\12.3.0_d7731ad\components\ble\ble_advertising;..\SDK\12.3.0_d7731ad\components\softdevice\common\softdevice_handler;..\SDK\12.3.0_d7731ad\components\softdevice\s130\headers;..\SDK\12.3.0_d7731ad\components\softdevice\s130\headers\nrf51</IncludePath>
             </VariousControls>
           </Aads>
           <LDads>
@@ -393,6 +393,11 @@
               <FileName>sdk_config.h</FileName>
               <FileType>5</FileType>
               <FilePath>..\SDK\12.3.0_d7731ad\sdk_config.h</FilePath>
+            </File>
+            <File>
+              <FileName>app_config.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\app_config.h</FilePath>
             </File>
           </Files>
         </Group>
@@ -1030,6 +1035,11 @@
               <FileName>sdk_config.h</FileName>
               <FileType>5</FileType>
               <FilePath>..\SDK\12.3.0_d7731ad\sdk_config.h</FilePath>
+            </File>
+            <File>
+              <FileName>app_config.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\app_config.h</FilePath>
             </File>
           </Files>
         </Group>

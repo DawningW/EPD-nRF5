@@ -2,6 +2,16 @@
 #define __EPD_CONFIG_H__
 #include <stdbool.h>
 #include <stdint.h>
+#include "app_config.h"
+#if FILESYSTEM_ENABLED
+#include "lfs_defines.h"
+#endif
+
+typedef enum {
+    GALLERY_MODE_SEQ = 0,
+    GALLERY_MODE_FIXED = 1,
+    GALLERY_MODE_RANDOM = 2,
+} gallery_mode_t;
 
 typedef struct {
     uint8_t mosi_pin;
@@ -17,6 +27,10 @@ typedef struct {
     uint8_t en_pin;
     uint8_t display_mode;
     uint8_t week_start;
+    uint8_t gallery_mode;
+#if FILESYSTEM_ENABLED
+    char gallery_image[LFS_NAME_MAX + 1];
+#endif
 } epd_config_t;
 
 #define EPD_CONFIG_SIZE (sizeof(epd_config_t) / sizeof(uint8_t))

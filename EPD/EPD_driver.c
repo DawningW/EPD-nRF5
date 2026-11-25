@@ -2,6 +2,8 @@
 
 #include "app_error.h"
 #include "nrf_drv_spi.h"
+#include "nrf_log.h"
+#include "app_config.h"
 
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
 #define BUFFER_SIZE 128
@@ -294,29 +296,110 @@ uint16_t EPD_ReadVoltage(void) {
 }
 
 // EPD models
+#if EPD_UC8176_420_BW_ENABLED
 extern epd_model_t epd_uc8176_420_bw;
+#endif
+#if EPD_UC8176_420_BWR_ENABLED
 extern epd_model_t epd_uc8176_420_bwr;
+#endif
+#if EPD_UC8159_583_BW_ENABLED
 extern epd_model_t epd_uc8159_583_bw;
+#endif
+#if EPD_UC8159_583_BWR_ENABLED
 extern epd_model_t epd_uc8159_583_bwr;
+#endif
+#if EPD_UC8159_750_BW_ENABLED
 extern epd_model_t epd_uc8159_750_bw;
+#endif
+#if EPD_UC8159_750_BWR_ENABLED
 extern epd_model_t epd_uc8159_750_bwr;
+#endif
+#if EPD_UC8179_583_BW_ENABLED
 extern epd_model_t epd_uc8179_583_bw;
+#endif
+#if EPD_UC8179_583_BWR_ENABLED
 extern epd_model_t epd_uc8179_583_bwr;
+#endif
+#if EPD_UC8179_750_BW_ENABLED
 extern epd_model_t epd_uc8179_750_bw;
+#endif
+#if EPD_UC8179_750_BWR_ENABLED
 extern epd_model_t epd_uc8179_750_bwr;
+#endif
+#if EPD_SSD1619_420_BWR_ENABLED
 extern epd_model_t epd_ssd1619_420_bwr;
+#endif
+#if EPD_SSD1619_420_BW_ENABLED
 extern epd_model_t epd_ssd1619_420_bw;
+#endif
+#if EPD_SSD1677_750_BWR_ENABLED
 extern epd_model_t epd_ssd1677_750_bwr;
+#endif
+#if EPD_SSD1677_750_BW_ENABLED
 extern epd_model_t epd_ssd1677_750_bw;
+#endif
+#if EPD_JD79668_420_BWRY_ENABLED
 extern epd_model_t epd_jd79668_420_bwry;
+#endif
+#if EPD_JD79665_750_BWRY_ENABLED
 extern epd_model_t epd_jd79665_750_bwry;
+#endif
+#if EPD_JD79665_583_BWRY_ENABLED
 extern epd_model_t epd_jd79665_583_bwry;
+#endif
 
 static epd_model_t* epd_models[] = {
-    &epd_uc8176_420_bw,    &epd_uc8176_420_bwr,   &epd_uc8159_583_bw,   &epd_uc8159_583_bwr, &epd_uc8159_750_bw,
-    &epd_uc8159_750_bwr,   &epd_uc8179_583_bw,    &epd_uc8179_583_bwr,  &epd_uc8179_750_bw,  &epd_uc8179_750_bwr,
-    &epd_ssd1619_420_bwr,  &epd_ssd1619_420_bw,   &epd_ssd1677_750_bwr, &epd_ssd1677_750_bw, &epd_jd79668_420_bwry,
-    &epd_jd79665_750_bwry, &epd_jd79665_583_bwry,
+#if EPD_UC8176_420_BW_ENABLED
+    &epd_uc8176_420_bw,
+#endif
+#if EPD_UC8176_420_BWR_ENABLED
+    &epd_uc8176_420_bwr,
+#endif
+#if EPD_UC8159_583_BW_ENABLED
+    &epd_uc8159_583_bw,
+#endif
+#if EPD_UC8159_583_BWR_ENABLED
+    &epd_uc8159_583_bwr,
+#endif
+#if EPD_UC8159_750_BW_ENABLED
+    &epd_uc8159_750_bw,
+#endif
+#if EPD_UC8159_750_BWR_ENABLED
+    &epd_uc8159_750_bwr,
+#endif
+#if EPD_UC8179_583_BW_ENABLED
+    &epd_uc8179_583_bw,
+#endif
+#if EPD_UC8179_583_BWR_ENABLED
+    &epd_uc8179_583_bwr,
+#endif
+#if EPD_UC8179_750_BW_ENABLED
+    &epd_uc8179_750_bw,
+#endif
+#if EPD_UC8179_750_BWR_ENABLED
+    &epd_uc8179_750_bwr,
+#endif
+#if EPD_SSD1619_420_BWR_ENABLED
+    &epd_ssd1619_420_bwr,
+#endif
+#if EPD_SSD1619_420_BW_ENABLED
+    &epd_ssd1619_420_bw,
+#endif
+#if EPD_SSD1677_750_BWR_ENABLED
+    &epd_ssd1677_750_bwr,
+#endif
+#if EPD_SSD1677_750_BW_ENABLED
+    &epd_ssd1677_750_bw,
+#endif
+#if EPD_JD79668_420_BWRY_ENABLED
+    &epd_jd79668_420_bwry,
+#endif
+#if EPD_JD79665_750_BWRY_ENABLED
+    &epd_jd79665_750_bwry,
+#endif
+#if EPD_JD79665_583_BWRY_ENABLED
+    &epd_jd79665_583_bwry,
+#endif
 };
 
 epd_model_t* epd_init(epd_model_id_t id) {

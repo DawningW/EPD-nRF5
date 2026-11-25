@@ -2,10 +2,117 @@ name: Build
 
 on:
   push:
+  pull_request:
   workflow_dispatch:
 
 jobs:
-  build:
+  nrf51:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install ARM GCC
+        uses: carlosperate/arm-none-eabi-gcc-action@v1
+        id: arm-none-eabi-gcc-action
+        with:
+          release: '4.9-2015-q3'
+      - name: Build
+        run: |
+          gcc_path=${{ steps.arm-none-eabi-gcc-action.outputs.path }}
+          sudo ln -s `dirname ${gcc_path}` /usr/local/gcc-arm-none-eabi-4_9-2015q3
+          cp Makefile.nRF51 Makefile
+          make
+      - name: Codesize
+        run: /usr/local/gcc-arm-none-eabi-4_9-2015q3/bin/arm-none-eabi-size _build/nrf51822_xxaa.out > nrf51822_xxaa.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nrf51822_xxaa
+          path: |
+            _build/nrf51822_xxaa.hex
+            SDK/12.3.0_d7731ad/components/softdevice/s130/hex/s130_nrf51_2.0.1_softdevice.hex
+      - uses: actions/upload-artifact@v4
+        with:
+          name: codesize-nrf51
+          path: nrf51822_xxaa.txt
+
+  nrf52:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install ARM GCC
+        uses: carlosperate/arm-none-eabi-gcc-action@v1
+        id: arm-none-eabi-gcc-action
+        with:
+          release: '9-2020-q2'
+      - name: Build
+        run: |
+          gcc_path=${{ steps.arm-none-eabi-gcc-action.outputs.path }}
+          sudo ln -s `dirname ${gcc_path}` /usr/local/gcc-arm-none-eabi-9-2020-q2-update
+          cp Makefile.nRF52 Makefile
+          make
+      - name: Codesize
+        run: /usr/local/gcc-arm-none-eabi-9-2020-q2-update/bin/arm-none-eabi-size _build/nrf52811_xxaa.out > nrf52811_xxaa.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nrf52811_xxaa
+          path: |
+            _build/nrf52811_xxaa.hex
+            SDK/17.1.0_ddde560/components/softdevice/s112/hex/s112_nrf52_7.3.0_softdevice.hex
+      - uses: actions/upload-artifact@v4
+        with:
+          name: codesize-nrf52
+          path: nrf52811_xxaa.txt
+
+  nrf52-gallery:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install ARM GCC
+        uses: carlosperate/arm-none-eabi-gcc-action@v1
+        id: arm-none-eabi-gcc-action
+        with:
+          release: '9-2020-q2'
+      - name: Build
+        run: |
+          gcc_path=${{ steps.arm-none-eabi-gcc-action.outputs.path }}
+          sudo ln -s `dirname ${gcc_path}` /usr/local/gcc-arm-none-eabi-9-2020-q2-update
+          sed -i 's/#define GPIOTE_ENABLED 1/#define GPIOTE_ENABLED 0/' SDK/17.1.0_ddde560/sdk_config.h
+          sed -i 's/#define EPD_UC8176_420_BW_ENABLED 1/#define EPD_UC8176_420_BW_ENABLED 0/' app_config.h
+          sed -i 's/#define EPD_UC8176_420_BWR_ENABLED 1/#define EPD_UC8176_420_BWR_ENABLED 0/' app_config.h
+          sed -i 's/#define EPD_UC8159_750_BW_ENABLED 1/#define EPD_UC8159_750_BW_ENABLED 0/' app_config.h
+          sed -i 's/#define EPD_UC8159_750_BWR_ENABLED 1/#define EPD_UC8159_750_BWR_ENABLED 0/' app_config.h
+          sed -i 's/#define EPD_UC8179_750_BW_ENABLED 1/#define EPD_UC8179_750_BW_ENABLED 0/' app_config.h
+          sed -i 's/#define EPD_UC8179_750_BWR_ENABLED 1/#define EPD_UC8179_750_BWR_ENABLED 0/' app_config.h
+          sed -i 's/#define EPD_UC8159_583_BW_ENABLED 1/#define EPD_UC8159_583_BW_ENABLED 0/' app_config.h
+          sed -i 's/#define EPD_UC8159_583_BWR_ENABLED 1/#define EPD_UC8159_583_BWR_ENABLED 0/' app_config.h
+          sed -i 's/#define EPD_UC8179_583_BW_ENABLED 1/#define EPD_UC8179_583_BW_ENABLED 0/' app_config.h
+          sed -i 's/#define EPD_UC8179_583_BWR_ENABLED 1/#define EPD_UC8179_583_BWR_ENABLED 0/' app_config.h
+          sed -i 's/#define EPD_SSD1619_420_BW_ENABLED 1/#define EPD_SSD1619_420_BW_ENABLED 0/' app_config.h
+          sed -i 's/#define EPD_SSD1677_750_BWR_ENABLED 1/#define EPD_SSD1677_750_BWR_ENABLED 0/' app_config.h
+          sed -i 's/#define EPD_SSD1677_750_BW_ENABLED 1/#define EPD_SSD1677_750_BW_ENABLED 0/' app_config.h
+          sed -i 's/#define EPD_JD79668_420_BWRY_ENABLED 1/#define EPD_JD79668_420_BWRY_ENABLED 0/' app_config.h
+          sed -i 's/#define EPD_JD79665_750_BWRY_ENABLED 1/#define EPD_JD79665_750_BWRY_ENABLED 0/' app_config.h
+          sed -i 's/#define EPD_JD79665_583_BWRY_ENABLED 1/#define EPD_JD79665_583_BWRY_ENABLED 0/' app_config.h
+          sed -i 's/#define SPIFLASH_ENABLED 0/#define SPIFLASH_ENABLED 1/' app_config.h
+          sed -i 's/#define FILESYSTEM_ENABLED 0/#define FILESYSTEM_ENABLED 1/' app_config.h
+          cp Makefile.nRF52 Makefile
+          make
+      - name: Codesize
+        run: /usr/local/gcc-arm-none-eabi-9-2020-q2-update/bin/arm-none-eabi-size _build/nrf52811_xxaa.out > nrf52811_xxaa-gallery.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nrf52811_xxaa-gallery
+          path: |
+            _build/nrf52811_xxaa.hex
+            SDK/17.1.0_ddde560/components/softdevice/s112/hex/s112_nrf52_7.3.0_softdevice.hex
+      - uses: actions/upload-artifact@v4
+        with:
+          name: codesize-nrf52-gallery
+          path: nrf52811_xxaa-gallery.txt
+
+  win32:
     runs-on: windows-latest
     steps:
       - name: Checkout
@@ -18,8 +125,49 @@ jobs:
             make
             mingw-w64-x86_64-gcc
       - name: Build
-        run: make
+        run: make -f Makefile.win32
       - uses: actions/upload-artifact@v4
         with:
           name: emulator
           path: emulator.exe
+
+  codesize:
+    needs: [nrf51, nrf52, nrf52-gallery]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Download size reports
+        uses: actions/download-artifact@v4
+        with:
+          pattern: codesize-*
+          merge-multiple: true
+          path: size
+      - name: Report
+        run: |
+          if [ -f codesize.json ]; then
+            python3 tools/codesize.py show size --baseline codesize.json | tee table.md
+          else
+            python3 tools/codesize.py show size | tee table.md
+          fi
+          echo '## Code Size' >> $GITHUB_STEP_SUMMARY
+          cat table.md >> $GITHUB_STEP_SUMMARY
+      - name: Comment on PR
+        if: github.event_name == 'pull_request'
+        uses: marocchino/sticky-pull-request-comment@v3
+        with:
+          header: codesize
+          path: table.md
+      - name: Update baseline
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          python3 tools/codesize.py write size codesize.json
+          git add codesize.json
+          git diff --cached --quiet codesize.json && exit 0
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git commit -m 'update codesize baseline [skip ci]'
+          git push

@@ -1,4 +1,6 @@
-class CropManager {
+import { setCanvasTitle, fillCanvas } from './main.js';
+
+export class CropManager {
   constructor(canvas, ctx) {
     this.canvas = canvas;
     this.ctx = ctx;

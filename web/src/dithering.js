@@ -25,7 +25,7 @@ const threeColorPalette = [
   { name: "红色", r: 255, g: 0, b: 0, value: 0x02 }
 ];
 
-function adjustContrast(imageData, factor) {
+export function adjustContrast(imageData, factor) {
   const data = imageData.data;
   for (let i = 0; i < data.length; i += 4) {
     data[i] = Math.min(255, Math.max(0, (data[i] - 128) * factor + 128));
@@ -530,7 +530,7 @@ function bayerDither(imageData, strength, mode) {
   return imageData;
 }
 
-function ditherImage(imageData, alg, strength, mode) {
+export function ditherImage(imageData, alg, strength, mode) {
   switch (alg) {
     case 'floydSteinberg':
       return floydSteinbergDither(imageData, strength, mode);
@@ -548,7 +548,7 @@ function ditherImage(imageData, alg, strength, mode) {
   }
 }
 
-function decodeProcessedData(processedData, width, height, mode) {
+export function decodeProcessedData(processedData, width, height, mode) {
   const imageData = new ImageData(width, height);
   const data = imageData.data;
 
@@ -631,7 +631,7 @@ function decodeProcessedData(processedData, width, height, mode) {
   return imageData;
 }
 
-function processImageData(imageData, mode) {
+export function processImageData(imageData, mode) {
   const width = imageData.width;
   const height = imageData.height;
   const data = imageData.data;

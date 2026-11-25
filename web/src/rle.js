@@ -1,5 +1,5 @@
 // RLE-compress a byte array.
-function rleCompress(data, maxLiteralSize = 128) {
+export function rleCompress(data, maxLiteralSize = 128) {
   const input = data instanceof Uint8Array ? data : new Uint8Array(data);
   const result = [];
   let i = 0;
@@ -47,7 +47,7 @@ function rleCompress(data, maxLiteralSize = 128) {
 // RLE-compress ENTIRE data, then split the compressed stream at RLE-code
 // boundaries so each chunk is a valid, complete RLE stream that fills the
 // MTU as much as possible without truncating any code.
-function rleCompressMTU(data, maxChunkSize) {
+export function rleCompressMTU(data, maxChunkSize) {
   // Constrain literal runs so a single code never exceeds maxChunkSize.
   // The control byte takes 1 byte, so data bytes ≤ maxChunkSize - 1.
   const maxLit = Math.min(maxChunkSize - 1, 128);

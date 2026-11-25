@@ -5,6 +5,7 @@
 
 #include "Lunar.h"
 #include "fonts.h"
+#include "app_config.h"
 
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
 #define GFX_printf_styled(gfx, fg, bg, font, ...) \
@@ -110,8 +111,7 @@ static bool GetFestival(uint16_t year, uint8_t mon, uint8_t day, uint8_t week, s
     return false;
 }
 
-static void DrawTimeSyncTip(Adafruit_GFX* gfx, gui_data_t* data) {
-    const char* title = "SYNC TIME!";
+static void DrawTip(Adafruit_GFX* gfx, gui_data_t* data, const char* title) {
     const char* url = "https://tsl0922.github.io/EPD-nRF5";
 
     GFX_setFont(gfx, u8g2_font_wqy9_t_lunar);
@@ -404,7 +404,7 @@ static void DrawClock(Adafruit_GFX* gfx, tm_t* tm, struct Lunar_Date* Lunar, gui
         GFX_printf(gfx, "%s", JieQiStr[JQday % 24]);
     } else {
         GFX_setCursor(gfx, data->width - GFX_getUTF8Width(gfx, "离小暑") - padding, data->height - 68 + 30);
-        GFX_printf(gfx, "离%");
+        GFX_printf(gfx, "离");
         GFX_setTextColor(gfx, GFX_RED, GFX_WHITE);
         GFX_printf(gfx, "%s", JieQiStr[JQday % 24]);
         GFX_setTextColor(gfx, GFX_BLACK, GFX_WHITE);
@@ -424,7 +424,7 @@ void DrawGUI(gui_data_t* data, buffer_callback callback, void* callback_data) {
     transformTime(data->timestamp, &tm);
 
     Adafruit_GFX gfx;
-    int16_t ph = (__HEAP_SIZE - 512) / (data->width / 8);
+    int16_t ph = (APP_HEAP_SIZE - GUI_HEAP_RESERVE) / (data->width / 8);
 
     if (data->color == 2)
         GFX_begin_3c(&gfx, data->width, data->height, ph);
@@ -446,12 +446,15 @@ void DrawGUI(gui_data_t* data, buffer_callback callback, void* callback_data) {
             case MODE_CLOCK:
                 DrawClock(&gfx, &tm, &Lunar, data);
                 break;
+            case MODE_GALLERY:
+                DrawTip(&gfx, data, "EMPTY GALLERY!");
+                break;
             default:
                 break;
         }
         if ((data->mode == MODE_CALENDAR || data->mode == MODE_CLOCK) &&
             (tm.tm_year + YEAR0 == 2025 && tm.tm_mon + 1 == 1)) {
-            DrawTimeSyncTip(&gfx, data);
+            DrawTip(&gfx, data, "SYNC TIME!");
         }
     } while (GFX_nextPage(&gfx, callback, callback_data));
 

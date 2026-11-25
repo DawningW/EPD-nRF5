@@ -6,7 +6,6 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<title>墨水屏日历</title>
 	<link rel="shortcut icon" type="image/png" href="favicon.png">
-	<link rel="stylesheet" href="css/main.css?v=20251109">
 </head>
 
 <body>
@@ -16,13 +15,13 @@
 			<legend>蓝牙连接</legend>
 			<div class="flex-container">
 				<div class="flex-group">
-					<button id="connectbutton" type="button" class="primary" onclick="preConnect()">连接</button>
-					<button id="reconnectbutton" type="button" class="secondary" onclick="reConnect()">重连</button>
-					<button type="button" class="secondary" onclick="clearLog()">清空日志</button>
+					<button id="connectbutton" type="button" class="primary">连接</button>
+					<button id="reconnectbutton" type="button" class="secondary">重连</button>
+					<button id="clearlogbutton" type="button" class="secondary">清空日志</button>
 				</div>
 				<div class="flex-group right debug">
 					<label for="epddriver">驱动</label>
-					<select id="epddriver" onchange="updateDitcherOptions()">
+					<select id="epddriver">
 						<option value="01" data-color="blackWhiteColor" data-size="4.2_400_300">4.2寸 (黑白, UC8176)</option>
 						<option value="03" data-color="threeColor" data-size="4.2_400_300">4.2寸 (三色, UC8176)</option>
 						<option value="04" data-color="blackWhiteColor" data-size="4.2_400_300">4.2寸 (黑白, SSD1619)</option>
@@ -45,7 +44,7 @@
 				<div class="flex-group debug">
 					<label for="epdpins">引脚</label>
 					<input id="epdpins" type="text" value="">
-					<button id="setDriverbutton" type="button" class="primary" onclick="setDriver()">确定</button>
+					<button id="setDriverbutton" type="button" class="primary">确定</button>
 				</div>
 			</div>
 			<div class="log-container" id="log"></div>
@@ -54,25 +53,26 @@
 			<legend>设备控制</legend>
 			<div class="flex-container">
 				<div class="flex-group">
-					<button id="calendarmodebutton" type="button" class="primary" onclick="syncTime(1)">日历模式</button>
-					<button id="clockmodebutton" type="button" class="primary" onclick="syncTime(2)">时钟模式</button>
-					<button id="clearscreenbutton" type="button" class="secondary" onclick="clearScreen()">清除屏幕</button>
+					<button id="calendarmodebutton" type="button" class="primary">日历模式</button>
+					<button id="clockmodebutton" type="button" class="primary">时钟模式</button>
+					<button id="gallerymodebutton" type="button" class="primary" style="display:none">相册模式</button>
+					<button id="clearscreenbutton" type="button" class="secondary">清除屏幕</button>
 				</div>
 				<div class="flex-group right debug">
 					<input type="text" id="cmdTXT" value="">
-					<button id="sendcmdbutton" type="button" class="primary" onclick="sendcmd()">发送命令</button>
+					<button id="sendcmdbutton" type="button" class="primary">发送命令</button>
 				</div>
 			</div>
 		</fieldset>
 		<fieldset>
 			<legend>蓝牙传图</legend>
 			<div class="flex-container">
-				<input type="file" id="imageFile" accept=".png,.jpg,.bmp,.webp,.jpeg" onchange="updateImage()">
+				<input type="file" id="imageFile" accept=".png,.jpg,.bmp,.webp,.jpeg">
 			</div>
 			<div class="flex-container options">
 				<div class="flex-group debug">
 					<label for="canvasSize">画布尺寸:</label>
-					<select id="canvasSize" onchange="updateCanvasSize()">
+					<select id="canvasSize">
 						<option value="1.54_152_152">1.54 (152x152)</option>
 						<option value="1.54_200_200">1.54 (200x200)</option>
 						<option value="2.13_104_212">2.13 (104x212)</option>
@@ -103,7 +103,7 @@
 				</div>
 				<div class="flex-group debug">
 					<label for="ditherMode">颜色模式:</label>
-					<select id="ditherMode" onchange="applyDither()">
+					<select id="ditherMode">
 						<option value="blackWhiteColor">双色(黑白)</option>
 						<option value="threeColor">三色(黑白红)</option>
 						<option value="fourColor">四色(黑白红黄)</option>
@@ -112,7 +112,7 @@
 				</div>
 				<div class="flex-group">
 					<label for="ditherAlg">抖动算法:</label>
-					<select id="ditherAlg" onchange="applyDither()">
+					<select id="ditherAlg">
 						<option value="floydSteinberg">Floyd-Steinberg</option>
 						<option value="atkinson">Atkinson</option>
 						<option value="bayer">Bayer</option>
@@ -143,10 +143,11 @@
 			<div class="status-bar"><b>状态：</b><span id="status"></span></div>
 			<div class="flex-container">
 				<div class="flex-group">
-					<button type="button" class="secondary debug" onclick="rotateCanvas()">旋转画布</button>
-					<button type="button" class="secondary" onclick="clearCanvas()">清除画布</button>
-					<button type="button" class="secondary debug" onclick="downloadDataArray()">下载数组</button>
-					<button id="sendimgbutton" type="button" class="primary" onclick="sendimg()">发送图片</button>
+					<button id="rotatecanvasbutton" type="button" class="secondary debug">旋转画布</button>
+					<button id="clearcanvasbutton" type="button" class="secondary">清除画布</button>
+					<button id="downloadarraybutton" type="button" class="secondary debug">下载数组</button>
+					<button id="sendimgbutton" type="button" class="primary">发送图片</button>
+					<button id="savegallerybutton" type="button" class="primary" style="display:none">存入相册</button>
 				</div>
 			</div>
 			<div class="canvas-container">
@@ -208,7 +209,6 @@
 							<option value="Source Han Sans CN">思源黑体</option>
 							<option value="Source Han Serif SC">思源宋体</option>
 							<option value="WenQuanYi Micro Hei">文泉驿微米黑</option>
-							</optgroup>
 						</select>
 						<label for="font-size">大小:</label>
 						<input type="number" id="font-size" value="16" min="1" max="100">
@@ -226,25 +226,57 @@
 						<button id="crop-move-up" title="上移">⇧</button>
 						<button id="crop-move-down" title="下移">⇩</button>
 						<button id="crop-move-right" title="右移">⇨</button>
-						<button class="primary" onclick="applyDither()">完成</button>
+						<button id="finishcropbutton" class="primary">完成</button>
 					</div>
 				</div>
+			</div>
+		</fieldset>
+		<fieldset id="gallerypanel" style="display:none">
+			<legend>相册管理</legend>
+			<div class="flex-container">
+					<div class="flex-group">
+						<button id="uploadimagebutton" type="button" class="primary">上传图片</button>
+						<button id="refreshgallerybutton" type="button" class="secondary">刷新</button>
+						<select id="gallerymode" title="相册每日自动更换图片的模式">
+							<option value="0" selected>顺序</option>
+							<option value="1">不更换</option>
+							<option value="2">随机</option>
+						</select>
+				</div>
+				<div class="flex-group right">
+					<span style="margin-right: 10px">总数: <span id="img-count">-</span></span>
+					<span style="margin-right: 10px">已用/总共: <span id="fs-free">-</span></span>
+					<span class="debug"><button id="formatstoragebutton" type="button" class="secondary">格式化</button></span>
+				</div>
+			</div>
+			<div class="status-bar"><b>状态：</b><span id="gallerystatus"></span></div>
+			<div id="gallery-list" style="max-height: 300px; overflow-y: auto;">
+				<div style="text-align: center; padding: 20px; color: #666;">
+					<button id="loadfilesbutton" type="button" class="secondary">加载文件列表</button>
+				</div>
+			</div>
+		</fieldset>
+		<fieldset>
+			<legend>固件升级</legend>
+			<div class="flex-container">
+				<input type="file" id="firmwareFile" accept=".zip">
+			</div>
+			<div class="flex-group">
+				<button id="selectdfubutton" type="button" class="secondary debug">选择DFU设备</button>
+				<button id="updatefirmwarebutton" type="button" class="primary">升级固件</button>
+				<div id="firmwareprogress" class="progress-bar"><div></div></div>
+				<span id="firmwarestatus" class="status-text"></span>
 			</div>
 		</fieldset>
 		<div class="footer">
 			<span class="copy">&copy; 2025 tsl0922.</span>
 			<span class="links">
 				<a href="https://github.com/tsl0922/EPD-nRF5">Github</a>
-				<a href="https://qm.qq.com/q/SckzhfDxuu" onclick="return confirm('本群是此开源固件作者的技术交流群\n如果你购买了成品，请找卖家提供售后！')">交流群</a>
+				<a href="https://qm.qq.com/q/SckzhfDxuu" id="qq-link">交流群</a>
 				<a href="?debug=true" id="debug-toggle">开发模式</a>
 			</span>
 		</div>
 	</div>
-	<script type="text/javascript" src="js/dithering.js"></script>
-	<script type="text/javascript" src="js/rle.js"></script>
-	<script type="text/javascript" src="js/paint.js"></script>
-	<script type="text/javascript" src="js/crop.js"></script>
-	<script type="text/javascript" src="js/main.js"></script>
 	<script>
 		var _hmt = _hmt || [];
 		(function () {

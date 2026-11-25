@@ -78,6 +78,10 @@ _build/
 *.l2p
 *.iex
 
+# Web
+web/node_modules/
+web/dist/
+
 # Vscode config files
 .vscode/
 
