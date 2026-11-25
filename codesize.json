@@ -1,0 +1,17 @@
+{
+  "nrf51822_xxaa": {
+    "bss": 2820,
+    "data": 1316,
+    "text": 84772
+  },
+  "nrf52811_xxaa": {
+    "bss": 1676,
+    "data": 692,
+    "text": 59040
+  },
+  "nrf52811_xxaa-gallery": {
+    "bss": 2012,
+    "data": 664,
+    "text": 71312
+  }
+}
